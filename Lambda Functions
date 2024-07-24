@@ -1,0 +1,21 @@
+# submit_feedback.py
+import json
+import boto3
+import uuid
+
+def lambda_handler(event, context):
+    dynamodb = boto3.resource('dynamodb')
+    table = dynamodb.Table('Feedback')
+
+    body = json.loads(event['body'])
+    feedback_id = str(uuid.uuid4())
+    table.put_item(Item={
+        'id': feedback_id,
+        'name': body['name'],
+        'feedback': body['feedback']
+    })
+
+    return {
+        'statusCode': 200,
+        'body': json.dumps({'id': feedback_id})
+    }
