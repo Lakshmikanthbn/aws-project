@@ -19,3 +19,17 @@ def lambda_handler(event, context):
         'statusCode': 200,
         'body': json.dumps({'id': feedback_id})
     }
+# get_feedback.py
+import json
+import boto3
+
+def lambda_handler(event, context):
+    dynamodb = boto3.resource('dynamodb')
+    table = dynamodb.Table('Feedback')
+
+    response = table.scan()
+
+    return {
+        'statusCode': 200,
+        'body': json.dumps(response['Items'])
+    }
