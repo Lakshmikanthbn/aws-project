@@ -1,0 +1,82 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  FeedbackTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName: 'Feedback'
+      AttributeDefinitions:
+        - AttributeName: 'id'
+          AttributeType: 'S'
+      KeySchema:
+        - AttributeName: 'id'
+          KeyType: 'HASH'
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+
+  SubmitFeedbackFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: 'SubmitFeedbackFunction'
+      Handler: 'submit_feedback.lambda_handler'
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: 'python3.8'
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import uuid
+          def lambda_handler(event, context):
+              dynamodb = boto3.resource('dynamodb')
+              table = dynamodb.Table('Feedback')
+              body = json.loads(event['body'])
+              feedback_id = str(uuid.uuid4())
+              table.put_item(Item={
+                  'id': feedback_id,
+                  'name': body['name'],
+                  'feedback': body['feedback']
+              })
+              return {
+                  'statusCode': 200,
+                  'body': json.dumps({'id': feedback_id})
+              }
+
+  GetFeedbackFunction:
+    Type: 'AWS::Lambda::Function'
+    Properties:
+      FunctionName: 'GetFeedbackFunction'
+      Handler: 'get_feedback.lambda_handler'
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Runtime: 'python3.8'
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          def lambda_handler(event, context):
+              dynamodb = boto3.resource('dynamodb')
+              table = dynamodb.Table('Feedback')
+              response = table.scan()
+              return {
+                  'statusCode': 200,
+                  'body': json.dumps(response['Items'])
+              }
+
+  LambdaExecutionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Principal:
+              Service: 'lambda.amazonaws.com'
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: 'DynamoDBAccess'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: 'Allow'
+                Action:
+                  - 'dynamodb:*'
+                Resource: '*'
